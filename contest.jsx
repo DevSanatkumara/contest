@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API = import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.origin !== "http://localhost:5173" ? "" : "http://localhost:3001");
 const ADMIN_PASSWORD = "dharma2024";
 
 async function apiFetch(path, opts = {}) {

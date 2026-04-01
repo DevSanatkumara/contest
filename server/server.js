@@ -32,6 +32,11 @@ const upload = multer({
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "1mb" }));
 
+const uiDist = path.join(__dirname, "../ui/dist");
+if (fs.existsSync(uiDist)) {
+  app.use(express.static(uiDist));
+}
+
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization;
   if (auth === `Bearer ${ADMIN_PASSWORD}`) return next();
@@ -223,6 +228,12 @@ app.post("/posts/:id/comments", asyncHandler(async (req, res) => {
   );
   res.status(201).json(result.rows[0]);
 }));
+
+// ── SPA fallback ──────────────────────────────────────────────────────────
+
+if (fs.existsSync(uiDist)) {
+  app.get("*", (req, res) => res.sendFile(path.join(uiDist, "index.html")));
+}
 
 // ── Error handler ─────────────────────────────────────────────────────────
 
