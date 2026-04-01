@@ -4,7 +4,7 @@ COPY ui/package*.json ./
 RUN npm ci
 COPY ui/ ./
 COPY contest.jsx ../contest.jsx
-RUN chmod +x node_modules/.bin/vite && npm run build
+RUN node node_modules/vite/bin/vite.js build
 
 FROM node:20-alpine
 WORKDIR /app
