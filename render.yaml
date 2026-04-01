@@ -8,7 +8,6 @@ services:
   - type: web
     name: contest-api
     env: node
-    plan: free
     buildCommand: npm install
     startCommand: node server/server.js
     envVars:
@@ -22,7 +21,6 @@ services:
   - type: web
     name: contest-ui
     env: static
-    plan: free
     buildCommand: cd ui && npm install && npm run build
     staticPublishPath: ui/dist
     envVars:
