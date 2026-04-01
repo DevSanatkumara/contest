@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contest
+      POSTGRES_USER: contest
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-contest123}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5433:5432"   # 5433 чтобы не конфликтовать с основной БД
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contest"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      DATABASE_URL: postgresql://contest:${DB_PASSWORD:-contest123}@db:5432/contest
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-dharma2024}
+      PORT: 3001
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pg_data:
