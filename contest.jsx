@@ -5,8 +5,8 @@ const ADMIN_PASSWORD = "dharma2024";
 
 async function apiFetch(path, opts = {}) {
   const res = await fetch(`${API}${path}`, {
+    ...opts,
     headers: { "Content-Type": "application/json", ...opts.headers },
-    ...opts
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
