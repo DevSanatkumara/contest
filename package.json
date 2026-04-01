@@ -2,10 +2,10 @@
   "name": "contest-server",
   "version": "1.0.0",
   "description": "Бэкенд литературного конкурса",
-  "main": "src/server.js",
+  "main": "server/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js",
     "db:init": "psql $DATABASE_URL -f schema.sql"
   },
   "dependencies": {

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(docker compose:*)",
+      "Bash(docker-compose --version)",
+      "Bash(cmd.exe /c \"docker --version\")",
+      "Bash(cmd.exe /c \"docker --version && docker compose version\")",
+      "Bash(npm --version)",
+      "Bash(cmd.exe /c \"node --version && npm --version && psql --version\")",
+      "Bash(cmd.exe /c \"where node 2>nul & where npm 2>nul & where psql 2>nul & where docker 2>nul\")"
+    ]
+  }
+}
