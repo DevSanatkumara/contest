@@ -70,9 +70,22 @@ export default function App() {
       .pc p{margin:0 0 1.4rem}
       .pc hr{border:none;border-top:.5px solid var(--color-border-tertiary);margin:2.5rem 0}
       .pc blockquote{border-left:2px solid var(--color-border-secondary);padding-left:1.25rem;margin:1.5rem 0;color:var(--color-text-secondary);font-style:italic}
-      .ch{transition:border-color .2s}.ch:hover{border-color:var(--color-border-secondary)!important}
+      .ch{transition:border-color .2s,box-shadow .2s,transform .2s}
+      .ch:hover{border-color:var(--color-border-secondary)!important;box-shadow:0 6px 20px rgba(44,24,16,.10)!important;transform:translateY(-2px)}
       .tb{background:none;border:.5px solid transparent;border-radius:4px;cursor:pointer;color:var(--color-text-secondary);font-family:var(--font-sans);height:30px;padding:0 8px;font-size:13px}
       .tb:hover{background:var(--color-background-primary);border-color:var(--color-border-tertiary)}
+      button{font-family:var(--font-sans);font-size:13px;cursor:pointer;border:.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-secondary);padding:7px 16px;transition:background .15s,border-color .15s,color .15s;line-height:1}
+      button:hover:not(:disabled){background:var(--color-background-secondary);border-color:var(--color-accent);color:var(--color-accent)}
+      button:disabled{opacity:.45;cursor:not-allowed}
+      button.primary{background:var(--color-accent);border-color:var(--color-accent);color:#fffdf8}
+      button.primary:hover:not(:disabled){background:var(--color-accent-hover);border-color:var(--color-accent-hover);color:#fffdf8}
+      input,textarea{font-family:var(--font-sans);font-size:14px;color:var(--color-text-primary);background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:9px 12px;outline:none;transition:border-color .15s;line-height:1.5;width:100%}
+      input:focus,textarea:focus{border-color:var(--color-accent);box-shadow:0 0 0 2px rgba(139,105,20,.12)}
+      input::placeholder,textarea::placeholder{color:var(--color-text-tertiary);font-style:italic}
+      textarea{resize:vertical}
+      .pc>p:first-child::first-letter{font-family:var(--font-serif);font-size:4.2em;font-weight:500;float:left;line-height:.82;margin:.06em .1em -.05em 0;color:var(--color-accent)}
+      .orn-divider{display:flex;align-items:center;gap:12px;margin:1.75rem 0 2.5rem;color:var(--color-text-tertiary);font-size:13px;letter-spacing:.15em;text-align:center}
+      .orn-divider::before,.orn-divider::after{content:'';flex:1;height:.5px;background:var(--color-border-tertiary)}
     `;
     document.head.appendChild(s);
     getFingerprint().then(setFp);
@@ -140,14 +153,14 @@ function ErrScreen({ msg, onRetry }) {
 
 function Nav({ isAdmin, onGallery, onAdmin, onLogout }) {
   return (
-    <header style={{ borderBottom:"0.5px solid var(--color-border-tertiary)", background:"var(--color-background-primary)", padding:"0 2rem", display:"flex", alignItems:"center", justifyContent:"space-between", height:"64px", position:"sticky", top:0, zIndex:10 }}>
+    <header style={{ borderBottom:"0.5px solid var(--color-border-tertiary)", background:"var(--color-background-primary)", padding:"0 2rem", display:"flex", alignItems:"center", justifyContent:"space-between", height:"64px", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 0 0 rgba(139,105,20,.08)" }}>
       <div onClick={onGallery} style={{ cursor:"pointer" }}>
-        <div style={{ fontSize:"10px", letterSpacing:".25em", textTransform:"uppercase", color:"var(--color-text-tertiary)", fontFamily:"var(--font-sans)", marginBottom:"2px" }}>Литературный конкурс</div>
-        <div style={{ fontFamily:"var(--font-serif)", fontSize:"20px", color:"var(--color-text-primary)" }}>Слово Дхармы</div>
+        <div style={{ fontSize:"11px", letterSpacing:".3em", textTransform:"uppercase", color:"var(--color-accent)", fontFamily:"var(--font-sans)", marginBottom:"2px" }}>Литературный конкурс</div>
+        <div style={{ fontFamily:"var(--font-serif)", fontSize:"22px", color:"var(--color-text-primary)" }}>Слово Дхармы</div>
       </div>
       <div style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
-        {isAdmin && <button onClick={onLogout} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)" }}>Выйти</button>}
-        <button onClick={onAdmin} style={{ background:"none", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-md)", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"12px", color: isAdmin ? "var(--color-text-success)" : "var(--color-text-secondary)", padding:"6px 14px" }}>
+        {isAdmin && <button onClick={onLogout} style={{ background:"none", border:"none", color:"var(--color-text-tertiary)" }}>Выйти</button>}
+        <button onClick={onAdmin} style={{ color: isAdmin ? "var(--color-accent)" : "var(--color-text-secondary)" }}>
           {isAdmin ? "Панель" : "Войти"}
         </button>
       </div>
@@ -169,14 +182,14 @@ function Gallery({ posts, fp, onRead, onPostsChange }) {
   );
 
   return (
-    <div style={{ maxWidth:"1140px", margin:"0 auto", padding:"3rem 2rem" }}>
+    <div style={{ maxWidth:"1140px", margin:"0 auto", padding:"3.5rem 2rem" }}>
       <div style={{ marginBottom:"2.5rem" }}>
-        <div style={{ fontFamily:"var(--font-sans)", fontSize:"11px", letterSpacing:".2em", textTransform:"uppercase", color:"var(--color-text-tertiary)", marginBottom:".5rem" }}>
+        <div style={{ fontFamily:"var(--font-sans)", fontSize:"11px", letterSpacing:".2em", textTransform:"uppercase", color:"var(--color-accent)", marginBottom:".5rem" }}>
           {posts.length} {plural(posts.length, ["работа","работы","работ"])} на конкурсе
         </div>
-        <div style={{ height:"1px", background:"var(--color-border-tertiary)" }} />
+        <div style={{ height:"1px", background:"linear-gradient(to right, transparent, var(--color-border-secondary), transparent)" }} />
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"1.25rem" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"1.5rem" }}>
         {posts.map(p => <PostCard key={p.id} post={p} onRead={onRead} onLike={() => toggleLike(p.id)} />)}
       </div>
     </div>
@@ -186,21 +199,21 @@ function Gallery({ posts, fp, onRead, onPostsChange }) {
 function PostCard({ post, onRead, onLike }) {
   const cover = post.cover_image_id ? `${API}/files/${post.cover_image_id}` : null;
   return (
-    <div className="ch" style={{ background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+    <div className="ch" style={{ background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 2px 8px rgba(44,24,16,.06)" }}>
       {cover
         ? <img src={cover} alt="" style={{ width:"100%", height:"160px", objectFit:"cover", display:"block", cursor:"pointer" }} onClick={() => onRead(post)} />
-        : <div style={{ height:"4px", background: post.accent_color || "#7B3F00" }} />
+        : <div style={{ height:"5px", background: post.accent_color || "#7B3F00" }} />
       }
       <div style={{ padding:"1.5rem", flex:1, cursor:"pointer" }} onClick={() => onRead(post)}>
         {post.genre && <div style={{ fontFamily:"var(--font-sans)", fontSize:"10px", letterSpacing:".2em", textTransform:"uppercase", color:"var(--color-text-tertiary)", marginBottom:".75rem" }}>{post.genre}</div>}
-        <h2 style={{ fontFamily:"var(--font-serif)", fontSize:"20px", fontWeight:"400", margin:"0 0 .4rem", lineHeight:"1.3", color:"var(--color-text-primary)" }}>{post.title}</h2>
+        <h2 style={{ fontFamily:"var(--font-serif)", fontSize:"21px", fontWeight:"400", margin:"0 0 .4rem", lineHeight:"1.25", color:"var(--color-text-primary)" }}>{post.title}</h2>
         <div style={{ fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)", marginBottom:"1rem" }}>{post.author} · {fmtDate(post.created_at)}</div>
         <p style={{ fontFamily:"var(--font-serif)", fontSize:"15px", lineHeight:"1.7", color:"var(--color-text-secondary)", margin:0 }}>{stripHtml(post.content, 180)}</p>
       </div>
       <div style={{ padding:".75rem 1.5rem", borderTop:"0.5px solid var(--color-border-tertiary)", display:"flex", alignItems:"center", gap:"8px" }}>
-        <button onClick={e => { e.stopPropagation(); onLike(); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"18px", color:"var(--color-text-tertiary)", padding:"2px", lineHeight:1 }}>♡</button>
+        <button onClick={e => { e.stopPropagation(); onLike(); }} style={{ background:"none", border:"none", fontSize:"16px", color:"var(--color-text-tertiary)", padding:"2px", lineHeight:1, transition:"color .15s" }}>♡</button>
         <span style={{ fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)" }}>{post.like_count || 0}</span>
-        <span style={{ marginLeft:"auto", fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)", cursor:"pointer" }} onClick={() => onRead(post)}>Читать →</span>
+        <span style={{ marginLeft:"auto", fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-accent)", letterSpacing:".05em", cursor:"pointer" }} onClick={() => onRead(post)}>Читать →</span>
       </div>
     </div>
   );
@@ -260,12 +273,12 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
         )}
       </div>
 
-      {cover && <img src={cover} alt="" style={{ width:"100%", maxHeight:"360px", objectFit:"cover", borderRadius:"var(--border-radius-lg)", marginBottom:"2.5rem", display:"block" }} />}
-      {post.genre && <div style={{ fontFamily:"var(--font-sans)", fontSize:"10px", letterSpacing:".25em", textTransform:"uppercase", color:"var(--color-text-tertiary)", marginBottom:"1rem" }}>{post.genre}</div>}
-      <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"38px", fontWeight:"400", lineHeight:"1.2", margin:"0 0 1rem", color:"var(--color-text-primary)" }}>{post.title}</h1>
+      {cover && <img src={cover} alt="" style={{ width:"100%", maxHeight:"360px", objectFit:"cover", borderRadius:"var(--border-radius-lg)", marginBottom:"3rem", display:"block", boxShadow:"0 4px 20px rgba(44,24,16,.12)" }} />}
+      {post.genre && <div style={{ fontFamily:"var(--font-sans)", fontSize:"10px", letterSpacing:".25em", textTransform:"uppercase", color:"var(--color-accent)", fontWeight:"500", marginBottom:".75rem" }}>{post.genre}</div>}
+      <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"42px", fontWeight:"400", lineHeight:"1.2", margin:"0 0 .75rem", color:"var(--color-text-primary)" }}>{post.title}</h1>
 
-      <div style={{ display:"flex", alignItems:"center", gap:"1rem", marginBottom:"3rem", paddingBottom:"2rem", borderBottom:"0.5px solid var(--color-border-tertiary)" }}>
-        <div style={{ width:"32px", height:"32px", borderRadius:"50%", background: post.accent_color || "#7B3F00", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"var(--font-sans)", fontSize:"13px", fontWeight:"500", flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"1rem", marginBottom:"0" }}>
+        <div style={{ width:"32px", height:"32px", borderRadius:"50%", background:"var(--color-accent)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fffdf8", fontFamily:"var(--font-sans)", fontSize:"13px", fontWeight:"500", flexShrink:0 }}>
           {post.author?.[0]?.toUpperCase()}
         </div>
         <div>
@@ -274,10 +287,12 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="pc" style={{ fontFamily:"var(--font-serif)", fontSize:"19px", lineHeight:"1.9", color:"var(--color-text-primary)" }} dangerouslySetInnerHTML={{ __html: post.content }} />
+      <div className="orn-divider">✦</div>
 
-      <div style={{ marginTop:"4rem", paddingTop:"2rem", borderTop:"0.5px solid var(--color-border-tertiary)", display:"flex", alignItems:"center", gap:"1rem" }}>
-        <button onClick={toggleLike} style={{ background:"none", border:`0.5px solid ${liked ? "#c0392b" : "var(--color-border-secondary)"}`, borderRadius:"100px", cursor:"pointer", padding:"8px 20px", color: liked ? "#c0392b" : "var(--color-text-secondary)", fontFamily:"var(--font-sans)", fontSize:"14px", display:"flex", alignItems:"center", gap:"8px" }}>
+      <div className="pc" style={{ fontFamily:"var(--font-serif)", fontSize:"18px", lineHeight:"1.9", color:"var(--color-text-primary)" }} dangerouslySetInnerHTML={{ __html: post.content }} />
+
+      <div style={{ marginTop:"3.5rem", paddingTop:"2rem", borderTop:"1px solid var(--color-border-tertiary)", display:"flex", alignItems:"center", gap:"1rem" }}>
+        <button onClick={toggleLike} style={{ background:"none", border:`0.5px solid ${liked ? "var(--color-border-danger)" : "var(--color-border-secondary)"}`, borderRadius:"100px", padding:"8px 20px", color: liked ? "var(--color-text-danger)" : "var(--color-text-secondary)", fontFamily:"var(--font-sans)", fontSize:"14px", display:"flex", alignItems:"center", gap:"8px" }}>
           <span>{liked ? "♥" : "♡"}</span>{liked ? "Нравится" : "Отметить"}
         </button>
         <span style={{ fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-tertiary)" }}>{count} {plural(count, ["отметка","отметки","отметок"])}</span>
@@ -295,11 +310,11 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
             <p style={{ fontFamily:"var(--font-serif)", fontSize:"16px", lineHeight:"1.7", margin:0, paddingLeft:"38px", color:"var(--color-text-secondary)" }}>{c.content}</p>
           </div>
         ))}
-        <div style={{ marginTop:"2rem", background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", padding:"1.5rem" }}>
+        <div style={{ marginTop:"2rem", background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", padding:"1.5rem", boxShadow:"0 2px 8px rgba(44,24,16,.05)" }}>
           <div style={{ fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-secondary)", marginBottom:"1rem", fontWeight:"500" }}>Оставить комментарий</div>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Ваше имя" style={{ width:"100%", marginBottom:".75rem", boxSizing:"border-box" }} />
           <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Поделитесь впечатлениями..." rows={4} style={{ width:"100%", boxSizing:"border-box", resize:"vertical", fontFamily:"var(--font-serif)", fontSize:"16px" }} />
-          <button onClick={submitComment} disabled={busy || !name.trim() || !text.trim()} style={{ marginTop:".75rem" }}>{busy ? "Публикуем…" : "Опубликовать →"}</button>
+          <button onClick={submitComment} className="primary" disabled={busy || !name.trim() || !text.trim()} style={{ marginTop:".75rem" }}>{busy ? "Публикуем…" : "Опубликовать →"}</button>
         </div>
       </div>
     </div>
@@ -314,12 +329,12 @@ function LoginView({ onLogin }) {
     else { setErr(true); setPw(""); setTimeout(() => setErr(false), 2500); }
   }
   return (
-    <div style={{ maxWidth:"400px", margin:"6rem auto", padding:"2rem", textAlign:"center" }}>
+    <div style={{ maxWidth:"400px", margin:"8rem auto", padding:"2.5rem", textAlign:"center", background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", boxShadow:"0 4px 24px rgba(44,24,16,.08)" }}>
       <div style={{ fontSize:"32px", color:"var(--color-text-tertiary)", marginBottom:"1.5rem", opacity:.4 }}>✦</div>
-      <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"26px", fontWeight:"400", margin:"0 0 2rem", color:"var(--color-text-primary)" }}>Вход для администратора</h1>
+      <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"28px", fontWeight:"400", margin:"0 0 2rem", color:"var(--color-text-primary)" }}>Вход для администратора</h1>
       <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === "Enter" && attempt()} placeholder="Пароль" style={{ width:"100%", boxSizing:"border-box", borderColor: err ? "var(--color-border-danger)" : undefined }} autoFocus />
       {err && <div style={{ fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-danger)", marginTop:".5rem" }}>Неверный пароль</div>}
-      <button onClick={attempt} style={{ marginTop:"1rem", width:"100%" }}>Войти</button>
+      <button onClick={attempt} className="primary" style={{ marginTop:"1rem", width:"100%" }}>Войти</button>
     </div>
   );
 }
@@ -329,7 +344,7 @@ function AdminPanel({ posts, onNew, onEdit, onDelete }) {
     <div style={{ maxWidth:"800px", margin:"0 auto", padding:"3rem 2rem" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"2.5rem" }}>
         <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"28px", fontWeight:"400", margin:0, color:"var(--color-text-primary)" }}>Панель администратора</h1>
-        <button onClick={onNew}>+ Новая работа</button>
+        <button onClick={onNew} className="primary">+ Новая работа</button>
       </div>
       {!posts.length
         ? <div style={{ textAlign:"center", padding:"4rem 0", color:"var(--color-text-tertiary)", fontFamily:"var(--font-sans)", fontSize:"14px" }}>Нажмите «+ Новая работа» чтобы опубликовать первое произведение</div>
@@ -408,7 +423,7 @@ function EditorView({ post, onSave, onCancel }) {
         <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"24px", fontWeight:"400", margin:0, color:"var(--color-text-primary)" }}>{post ? "Редактировать работу" : "Новая работа"}</h1>
         <div style={{ display:"flex", gap:".75rem" }}>
           <button onClick={onCancel} style={{ background:"none" }}>Отмена</button>
-          <button onClick={handleSave} disabled={saving || uploading || !title.trim() || !author.trim()}>{saving ? "Сохраняем…" : "Опубликовать"}</button>
+          <button onClick={handleSave} className="primary" disabled={saving || uploading || !title.trim() || !author.trim()}>{saving ? "Сохраняем…" : "Опубликовать"}</button>
         </div>
       </div>
 
@@ -457,7 +472,7 @@ function EditorView({ post, onSave, onCancel }) {
       </div>
 
       <div style={{ border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", overflow:"hidden" }}>
-        <div style={{ background:"var(--color-background-secondary)", padding:"6px 10px", borderBottom:"0.5px solid var(--color-border-tertiary)", display:"flex", flexWrap:"wrap", gap:"2px", alignItems:"center" }}>
+        <div style={{ background:"var(--color-background-tertiary)", padding:"6px 10px", borderBottom:"0.5px solid var(--color-border-tertiary)", display:"flex", flexWrap:"wrap", gap:"2px", alignItems:"center" }}>
           {[["B","bold",{fontWeight:700}],["I","italic",{fontStyle:"italic"}],["U","underline",{textDecoration:"underline"}]].map(([l,c,s]) => (
             <button key={c} className="tb" onMouseDown={e => { e.preventDefault(); exec(c); }} style={s}>{l}</button>
           ))}
@@ -473,7 +488,7 @@ function EditorView({ post, onSave, onCancel }) {
           <button className="tb" onMouseDown={e => { e.preventDefault(); exec("insertHorizontalRule"); }}>——</button>
         </div>
         <div ref={editorRef} contentEditable suppressContentEditableWarning data-ph="Начните вводить текст произведения..."
-          style={{ minHeight:"420px", padding:"2rem", fontFamily:"var(--font-serif)", fontSize:"18px", lineHeight:"1.9", color:"var(--color-text-primary)", outline:"none", background:"var(--color-background-primary)" }}
+          style={{ minHeight:"420px", padding:"2rem 2.5rem", fontFamily:"var(--font-serif)", fontSize:"17px", lineHeight:"1.9", color:"var(--color-text-primary)", outline:"none", background:"var(--color-background-primary)" }}
         />
       </div>
       <div style={{ marginTop:".75rem", fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)" }}>
