@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 
 const API = import.meta.env.VITE_API_URL || (typeof window !== "undefined" && window.location.origin !== "http://localhost:5173" ? "" : "http://localhost:3001");
 const ADMIN_PASSWORD = "dharma2024";
@@ -86,6 +88,12 @@ export default function App() {
       .pc>p:first-child::first-letter{font-family:var(--font-serif);font-size:4.2em;font-weight:500;float:left;line-height:.82;margin:.06em .1em -.05em 0;color:var(--color-accent)}
       .orn-divider{display:flex;align-items:center;gap:12px;margin:1.75rem 0 2.5rem;color:var(--color-text-tertiary);font-size:13px;letter-spacing:.15em;text-align:center}
       .orn-divider::before,.orn-divider::after{content:'';flex:1;height:.5px;background:var(--color-border-tertiary)}
+      .ck-editor-wrap .ck.ck-editor__main>.ck-editor__editable{min-height:420px;font-family:var(--font-serif)!important;font-size:17px!important;line-height:1.9!important;color:var(--color-text-primary)!important;background:var(--color-background-primary)!important;padding:2rem 2.5rem!important}
+      .ck-editor-wrap .ck.ck-toolbar{background:var(--color-background-tertiary)!important;border-color:var(--color-border-tertiary)!important;border-radius:var(--border-radius-lg) var(--border-radius-lg) 0 0!important}
+      .ck-editor-wrap .ck.ck-editor__main>.ck-editor__editable{border-color:var(--color-border-tertiary)!important;border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg)!important}
+      .ck-editor-wrap .ck.ck-editor__main>.ck-editor__editable.ck-focused{border-color:var(--color-accent)!important;box-shadow:0 0 0 2px rgba(139,105,20,.12)!important}
+      .ck-editor-wrap .ck.ck-button{font-family:var(--font-sans)!important;color:var(--color-text-secondary)!important}
+      .ck-editor-wrap .ck.ck-button:hover:not(.ck-disabled),.ck-editor-wrap .ck.ck-button.ck-on{background:var(--color-background-secondary)!important;color:var(--color-accent)!important}
     `;
     document.head.appendChild(s);
     getFingerprint().then(setFp);
@@ -380,14 +388,8 @@ function EditorView({ post, onSave, onCancel }) {
   const [coverPreview, setPreview] = useState(post?.cover_image_id ? `${API}/files/${post.cover_image_id}` : null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving]       = useState(false);
-  const editorRef = useRef(null);
+  const [content, setContent]     = useState(post?.content || "");
   const fileRef   = useRef(null);
-
-  useEffect(() => {
-    if (editorRef.current && post?.content) editorRef.current.innerHTML = post.content;
-  }, []);
-
-  function exec(cmd, val = null) { document.execCommand(cmd, false, val); editorRef.current?.focus(); }
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -413,7 +415,7 @@ function EditorView({ post, onSave, onCancel }) {
     if (!title.trim() || !author.trim()) return;
     setSaving(true);
     try {
-      await onSave({ id: post?.id, title: title.trim(), author: author.trim(), genre: genre.trim(), accent_color: accent, cover_image_id: coverId || null, content: editorRef.current?.innerHTML || "" });
+      await onSave({ id: post?.id, title: title.trim(), author: author.trim(), genre: genre.trim(), accent_color: accent, cover_image_id: coverId || null, content });
     } finally { setSaving(false); }
   }
 
@@ -471,28 +473,30 @@ function EditorView({ post, onSave, onCancel }) {
         </div>
       </div>
 
-      <div style={{ border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", overflow:"hidden" }}>
-        <div style={{ background:"var(--color-background-tertiary)", padding:"6px 10px", borderBottom:"0.5px solid var(--color-border-tertiary)", display:"flex", flexWrap:"wrap", gap:"2px", alignItems:"center" }}>
-          {[["B","bold",{fontWeight:700}],["I","italic",{fontStyle:"italic"}],["U","underline",{textDecoration:"underline"}]].map(([l,c,s]) => (
-            <button key={c} className="tb" onMouseDown={e => { e.preventDefault(); exec(c); }} style={s}>{l}</button>
-          ))}
-          <div style={{ width:"0.5px", height:"20px", background:"var(--color-border-secondary)", margin:"0 4px" }} />
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("formatBlock","h2"); }}>Заголовок</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("formatBlock","h3"); }}>Подзаголовок</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("formatBlock","p"); }}>Абзац</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("formatBlock","blockquote"); }}>Цитата</button>
-          <div style={{ width:"0.5px", height:"20px", background:"var(--color-border-secondary)", margin:"0 4px" }} />
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("justifyLeft"); }}>⇐</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("justifyCenter"); }}>⇔</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("justifyRight"); }}>⇒</button>
-          <button className="tb" onMouseDown={e => { e.preventDefault(); exec("insertHorizontalRule"); }}>——</button>
-        </div>
-        <div ref={editorRef} contentEditable suppressContentEditableWarning data-ph="Начните вводить текст произведения..."
-          style={{ minHeight:"420px", padding:"2rem 2.5rem", fontFamily:"var(--font-serif)", fontSize:"17px", lineHeight:"1.9", color:"var(--color-text-primary)", outline:"none", background:"var(--color-background-primary)" }}
+      <div className="ck-editor-wrap">
+        <CKEditor
+          editor={ClassicEditor}
+          data={content}
+          config={{
+            toolbar: [
+              "heading", "|",
+              "bold", "italic", "underline", "|",
+              "blockQuote", "horizontalLine", "|",
+              "alignment", "|",
+              "bulletedList", "numberedList", "|",
+              "undo", "redo"
+            ],
+            heading: {
+              options: [
+                { model: "paragraph", title: "Абзац", class: "ck-heading_paragraph" },
+                { model: "heading2", view: "h2", title: "Заголовок", class: "ck-heading_heading2" },
+                { model: "heading3", view: "h3", title: "Подзаголовок", class: "ck-heading_heading3" },
+              ]
+            },
+            placeholder: "Начните вводить текст произведения…",
+          }}
+          onChange={(_, editor) => setContent(editor.getData())}
         />
-      </div>
-      <div style={{ marginTop:".75rem", fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)" }}>
-        B / I / U для форматирования. Для стихов — выравнивание по центру.
       </div>
     </div>
   );
