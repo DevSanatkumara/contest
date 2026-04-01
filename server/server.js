@@ -3,6 +3,8 @@ const express = require("express");
 const multer = require("multer");
 const { Pool } = require("pg");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -234,9 +236,20 @@ app.use((err, req, res, next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 
+async function initDb(client) {
+  const schemaPath = path.join(__dirname, "../schema.sql");
+  if (fs.existsSync(schemaPath)) {
+    const sql = fs.readFileSync(schemaPath, "utf8");
+    await client.query(sql);
+    console.log("✓ Schema initialized");
+  }
+}
+
 pool.connect()
-  .then(() => {
+  .then(async (client) => {
     console.log("✓ PostgreSQL connected");
+    await initDb(client);
+    client.release();
     app.listen(PORT, () => console.log(`✓ Contest server → http://localhost:${PORT}`));
   })
   .catch(err => {
