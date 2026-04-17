@@ -47,6 +47,48 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
+// ── Слаги ─────────────────────────────────────────────────────────────────
+
+const CYR_MAP = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+  к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+  х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya"
+};
+
+function slugify(str) {
+  if (!str) return "";
+  const s = String(str).toLowerCase()
+    .split("").map(c => CYR_MAP[c] ?? c).join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return s.slice(0, 80).replace(/-+$/, "");
+}
+
+async function uniqueSlug(base, client, excludeId = null) {
+  const root = base || "post";
+  let slug = root;
+  let n = 1;
+  while (true) {
+    const q = excludeId
+      ? "SELECT 1 FROM posts WHERE slug = $1 AND id <> $2"
+      : "SELECT 1 FROM posts WHERE slug = $1";
+    const params = excludeId ? [slug, excludeId] : [slug];
+    const r = await (client || pool).query(q, params);
+    if (!r.rows.length) return slug;
+    n++;
+    slug = `${root}-${n}`;
+  }
+}
+
+async function migrateSlugs(client) {
+  const r = await client.query("SELECT id, title FROM posts WHERE slug IS NULL");
+  for (const { id, title } of r.rows) {
+    const slug = await uniqueSlug(slugify(title), client, id);
+    await client.query("UPDATE posts SET slug = $1 WHERE id = $2", [slug, id]);
+  }
+  if (r.rows.length) console.log(`✓ Migrated ${r.rows.length} post slugs`);
+}
+
 // ── Healthcheck ───────────────────────────────────────────────────────────
 
 app.get("/health", (req, res) => res.json({ ok: true }));
@@ -90,7 +132,7 @@ app.get("/posts", asyncHandler(async (req, res) => {
   const where = includeDrafts ? "" : "WHERE p.is_draft = FALSE";
   const result = await pool.query(`
     SELECT
-      p.id, p.title, p.author, p.genre, p.accent_color,
+      p.id, p.slug, p.title, p.author, p.genre, p.accent_color,
       p.content, p.cover_image_id, p.is_draft, p.created_at,
       COUNT(DISTINCT l.id)::int  AS like_count,
       COUNT(DISTINCT c.id)::int  AS comment_count
@@ -102,6 +144,22 @@ app.get("/posts", asyncHandler(async (req, res) => {
     ORDER BY p.created_at DESC
   `);
   res.json(result.rows);
+}));
+
+// GET /posts/by-slug/:slug — одна работа по слагу (для публичных ссылок)
+app.get("/posts/by-slug/:slug", asyncHandler(async (req, res) => {
+  const result = await pool.query(`
+    SELECT p.*,
+      COUNT(DISTINCT l.id)::int AS like_count,
+      COUNT(DISTINCT c.id)::int AS comment_count
+    FROM posts p
+    LEFT JOIN likes    l ON l.post_id = p.id
+    LEFT JOIN comments c ON c.post_id = p.id
+    WHERE p.slug = $1
+    GROUP BY p.id
+  `, [req.params.slug]);
+  if (!result.rows.length) return res.status(404).json({ error: "Not found" });
+  res.json(result.rows[0]);
 }));
 
 // GET /posts/:id — одна работа
@@ -132,10 +190,11 @@ app.post("/posts", requireAdmin, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Для публикации нужен текст произведения" });
   }
 
+  const slug = await uniqueSlug(slugify(title));
   const result = await pool.query(`
-    INSERT INTO posts (title, author, genre, accent_color, content, cover_image_id, is_draft)
-    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
-  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color || "#7B3F00", content || "", cover_image_id || null, !!is_draft]);
+    INSERT INTO posts (title, author, genre, accent_color, content, cover_image_id, is_draft, slug)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color || "#7B3F00", content || "", cover_image_id || null, !!is_draft, slug]);
 
   res.status(201).json(result.rows[0]);
 }));
@@ -149,12 +208,16 @@ app.put("/posts/:id", requireAdmin, asyncHandler(async (req, res) => {
   if (!is_draft && !content?.trim()) {
     return res.status(400).json({ error: "Для публикации нужен текст произведения" });
   }
+  const existing = await pool.query("SELECT slug FROM posts WHERE id = $1", [req.params.id]);
+  if (!existing.rows.length) return res.status(404).json({ error: "Not found" });
+  const slug = existing.rows[0].slug || await uniqueSlug(slugify(title), null, req.params.id);
+
   const result = await pool.query(`
     UPDATE posts
     SET title=$1, author=$2, genre=$3, accent_color=$4,
-        content=$5, cover_image_id=$6, is_draft=$7
-    WHERE id=$8 RETURNING *
-  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color, content || "", cover_image_id || null, !!is_draft, req.params.id]);
+        content=$5, cover_image_id=$6, is_draft=$7, slug=$8
+    WHERE id=$9 RETURNING *
+  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color, content || "", cover_image_id || null, !!is_draft, slug, req.params.id]);
 
   if (!result.rows.length) return res.status(404).json({ error: "Not found" });
   res.json(result.rows[0]);
@@ -267,6 +330,7 @@ async function initDb(client) {
     await client.query(sql);
     console.log("✓ Schema initialized");
   }
+  await migrateSlugs(client);
 }
 
 pool.connect()

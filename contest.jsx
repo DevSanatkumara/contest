@@ -58,6 +58,12 @@ function stripHtml(html = "", len = 200) {
   return t.length > len ? t.slice(0, len) + "…" : t;
 }
 
+function postSlugFromPath() {
+  if (typeof window === "undefined") return null;
+  const m = window.location.pathname.match(/^\/post\/([^/]+)\/?$/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 function plural(n, f) {
   const m = n % 10, h = n % 100;
   if (h >= 11 && h <= 14) return f[2];
@@ -130,19 +136,41 @@ export default function App() {
   useEffect(() => { loadPosts(); }, []);
 
   useEffect(() => {
+    const initSlug = postSlugFromPath();
+    if (initSlug) {
+      window.history.replaceState({}, "", "/");
+      setPostInView({ slug: initSlug });
+      setScreen("read");
+      window.history.pushState({ postSlug: initSlug }, "", `/post/${encodeURIComponent(initSlug)}`);
+    }
     const onPop = () => {
-      setScreen("gallery");
-      setPostInView(null);
-      setEditingPost(null);
+      const slug = postSlugFromPath();
+      if (slug) {
+        setPostInView({ slug });
+        setScreen("read");
+        setEditingPost(null);
+      } else {
+        setScreen("gallery");
+        setPostInView(null);
+        setEditingPost(null);
+      }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  function navToRoot() {
+    if (window.location.pathname !== "/") window.history.pushState({}, "", "/");
+  }
+
   function openPost(p) {
     setPostInView(p);
     setScreen("read");
-    window.history.pushState({ screen: "read", postId: p.id }, "");
+    const key = p.slug || p.id;
+    const target = `/post/${encodeURIComponent(key)}`;
+    if (window.location.pathname !== target) {
+      window.history.pushState({ postSlug: p.slug, postId: p.id }, "", target);
+    }
   }
 
   async function loadPosts(withDrafts = false) {
@@ -179,12 +207,12 @@ export default function App() {
   return (
     <div style={{ fontFamily:"var(--font-serif)", minHeight:"100vh", background:"var(--color-background-tertiary)" }}>
       <Nav isAdmin={isAdmin}
-        onGallery={() => setScreen("gallery")}
-        onAdmin={() => setScreen(isAdmin ? "admin" : "login")}
-        onLogout={() => { setIsAdmin(false); setScreen("gallery"); loadPosts(false); }}
+        onGallery={() => { setPostInView(null); setScreen("gallery"); navToRoot(); }}
+        onAdmin={() => { setScreen(isAdmin ? "admin" : "login"); navToRoot(); }}
+        onLogout={() => { setIsAdmin(false); setPostInView(null); setScreen("gallery"); navToRoot(); loadPosts(false); }}
       />
       {screen === "gallery" && <Gallery posts={posts.filter(p => !p.is_draft)} fp={fingerprint} onRead={openPost} onPostsChange={setPosts} />}
-      {screen === "read" && postInView && <ReadView postId={postInView.id} fp={fingerprint} isAdmin={isAdmin} onBack={() => window.history.back()} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить работу?")) deletePost(id); }} />}
+      {screen === "read" && postInView && <ReadView postInView={postInView} fp={fingerprint} isAdmin={isAdmin} onBack={() => window.history.back()} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить работу?")) deletePost(id); }} />}
       {screen === "login" && <LoginView onLogin={() => { setIsAdmin(true); setScreen("admin"); loadPosts(true); }} />}
       {screen === "admin" && isAdmin && <AdminPanel posts={posts} onNew={() => { setEditingPost(null); setScreen("editor"); }} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить?")) deletePost(id); }} />}
       {screen === "editor" && isAdmin && <EditorView post={editingPost} onSave={async p => { await savePost(p); setScreen("admin"); }} onCancel={() => setScreen("admin")} />}
@@ -275,7 +303,7 @@ function PostCard({ post, onRead, onLike }) {
   );
 }
 
-function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
+function ReadView({ postInView, fp, isAdmin, onBack, onEdit, onDelete }) {
   const [post, setPost]         = useState(null);
   const [comments, setComments] = useState([]);
   const [liked, setLiked]       = useState(false);
@@ -284,31 +312,50 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
   const [text, setText]         = useState("");
   const [busy, setBusy]         = useState(false);
   const [loading, setLoading]   = useState(true);
+  const [copied, setCopied]     = useState(false);
+
+  async function copyLink() {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      prompt("Скопируйте ссылку:", url);
+    }
+  }
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const fingerprint = fp || await getFingerprint();
-      const [p, comms, likeData] = await Promise.all([
-        apiFetch(`/posts/${postId}`),
-        apiFetch(`/posts/${postId}/comments`),
-        apiFetch(`/posts/${postId}/likes?fingerprint=${fingerprint}`)
+      const url = postInView.id
+        ? `/posts/${postInView.id}`
+        : `/posts/by-slug/${encodeURIComponent(postInView.slug)}`;
+      const p = await apiFetch(url);
+      const [comms, likeData] = await Promise.all([
+        apiFetch(`/posts/${p.id}/comments`),
+        apiFetch(`/posts/${p.id}/likes?fingerprint=${fingerprint}`)
       ]);
+      if (p.slug && window.location.pathname !== `/post/${encodeURIComponent(p.slug)}`) {
+        window.history.replaceState({ postSlug: p.slug, postId: p.id }, "", `/post/${encodeURIComponent(p.slug)}`);
+      }
       setPost(p); setComments(comms); setLiked(likeData.liked); setCount(likeData.count);
       setLoading(false);
     })();
-  }, [postId]);
+  }, [postInView.id, postInView.slug]);
 
   async function toggleLike() {
+    if (!post) return;
     const fingerprint = fp || await getFingerprint();
-    const data = await apiFetch(`/posts/${postId}/like`, { method:"POST", body: JSON.stringify({ fingerprint }) });
+    const data = await apiFetch(`/posts/${post.id}/like`, { method:"POST", body: JSON.stringify({ fingerprint }) });
     setLiked(data.liked); setCount(data.count);
   }
 
   async function submitComment() {
-    if (!name.trim() || !text.trim()) return;
+    if (!name.trim() || !text.trim() || !post) return;
     setBusy(true);
-    const c = await apiFetch(`/posts/${postId}/comments`, { method:"POST", body: JSON.stringify({ author: name.trim(), content: text.trim() }) });
+    const c = await apiFetch(`/posts/${post.id}/comments`, { method:"POST", body: JSON.stringify({ author: name.trim(), content: text.trim() }) });
     setComments(cs => [...cs, c]);
     setName(""); setText(""); setBusy(false);
   }
@@ -321,12 +368,15 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
     <div style={{ maxWidth:"680px", margin:"0 auto", padding:"2.5rem 2rem 6rem" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"2.5rem" }}>
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-tertiary)", padding:0 }}>← Все работы</button>
-        {isAdmin && (
-          <div style={{ display:"flex", gap:"1rem" }}>
-            <button onClick={() => onEdit(post)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-secondary)" }}>Изменить</button>
-            <button onClick={() => onDelete(post.id)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-danger)" }}>Удалить</button>
-          </div>
-        )}
+        <div style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
+          <button onClick={copyLink} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color: copied ? "var(--color-accent)" : "var(--color-text-tertiary)", padding:0 }}>{copied ? "Ссылка скопирована ✓" : "Копировать ссылку"}</button>
+          {isAdmin && (
+            <>
+              <button onClick={() => onEdit(post)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-secondary)" }}>Изменить</button>
+              <button onClick={() => onDelete(post.id)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"var(--font-sans)", fontSize:"13px", color:"var(--color-text-danger)" }}>Удалить</button>
+            </>
+          )}
+        </div>
       </div>
 
       {cover && <img src={cover} alt="" style={{ width:"100%", maxHeight:"360px", objectFit:"cover", borderRadius:"var(--border-radius-lg)", marginBottom:"3rem", display:"block", boxShadow:"0 4px 20px rgba(44,24,16,.12)" }} />}
