@@ -27,7 +27,13 @@ function fmtDate(iso) {
 function stripHtml(html = "", len = 200) {
   const d = document.createElement("div");
   d.innerHTML = html;
-  const t = d.textContent || d.innerText || "";
+  d.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+  d.querySelectorAll("p,div,li,blockquote,h1,h2,h3,h4,h5,h6,tr").forEach(el => el.append("\n"));
+  const t = (d.textContent || d.innerText || "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/^\s+|\s+$/g, "");
   return t.length > len ? t.slice(0, len) + "…" : t;
 }
 
@@ -216,7 +222,7 @@ function PostCard({ post, onRead, onLike }) {
         {post.genre && <div style={{ fontFamily:"var(--font-sans)", fontSize:"10px", letterSpacing:".2em", textTransform:"uppercase", color:"var(--color-text-tertiary)", marginBottom:".75rem" }}>{post.genre}</div>}
         <h2 style={{ fontFamily:"var(--font-serif)", fontSize:"21px", fontWeight:"400", margin:"0 0 .4rem", lineHeight:"1.25", color:"var(--color-text-primary)" }}>{post.title}</h2>
         <div style={{ fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)", marginBottom:"1rem" }}>{post.author} · {fmtDate(post.created_at)}</div>
-        <p style={{ fontFamily:"var(--font-serif)", fontSize:"15px", lineHeight:"1.7", color:"var(--color-text-secondary)", margin:0 }}>{stripHtml(post.content, 180)}</p>
+        <p style={{ fontFamily:"var(--font-serif)", fontSize:"15px", lineHeight:"1.7", color:"var(--color-text-secondary)", margin:0, whiteSpace:"pre-line", display:"-webkit-box", WebkitLineClamp:6, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{stripHtml(post.content, 220)}</p>
       </div>
       <div style={{ padding:".75rem 1.5rem", borderTop:"0.5px solid var(--color-border-tertiary)", display:"flex", alignItems:"center", gap:"8px" }}>
         <button onClick={e => { e.stopPropagation(); onLike(); }} style={{ background:"none", border:"none", fontSize:"16px", color:"var(--color-text-tertiary)", padding:"2px", lineHeight:1, transition:"color .15s" }}>♡</button>
