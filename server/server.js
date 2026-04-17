@@ -83,17 +83,21 @@ app.get("/files/:id", asyncHandler(async (req, res) => {
 
 // ── Посты ─────────────────────────────────────────────────────────────────
 
-// GET /posts — список всех работ
+// GET /posts — список работ (черновики только для admin с ?include_drafts=1)
 app.get("/posts", asyncHandler(async (req, res) => {
+  const includeDrafts = req.query.include_drafts === "1"
+    && req.headers.authorization === `Bearer ${ADMIN_PASSWORD}`;
+  const where = includeDrafts ? "" : "WHERE p.is_draft = FALSE";
   const result = await pool.query(`
     SELECT
       p.id, p.title, p.author, p.genre, p.accent_color,
-      p.content, p.cover_image_id, p.created_at,
+      p.content, p.cover_image_id, p.is_draft, p.created_at,
       COUNT(DISTINCT l.id)::int  AS like_count,
       COUNT(DISTINCT c.id)::int  AS comment_count
     FROM posts p
     LEFT JOIN likes    l ON l.post_id = p.id
     LEFT JOIN comments c ON c.post_id = p.id
+    ${where}
     GROUP BY p.id
     ORDER BY p.created_at DESC
   `);
@@ -120,28 +124,37 @@ app.get("/posts/:id", asyncHandler(async (req, res) => {
 
 // POST /posts — создать работу (admin)
 app.post("/posts", requireAdmin, asyncHandler(async (req, res) => {
-  const { title, author, genre, accent_color, content, cover_image_id } = req.body;
-  if (!title?.trim() || !author?.trim() || !content?.trim()) {
-    return res.status(400).json({ error: "title, author, content обязательны" });
+  const { title, author, genre, accent_color, content, cover_image_id, is_draft } = req.body;
+  if (!title?.trim() || !author?.trim()) {
+    return res.status(400).json({ error: "title, author обязательны" });
+  }
+  if (!is_draft && !content?.trim()) {
+    return res.status(400).json({ error: "Для публикации нужен текст произведения" });
   }
 
   const result = await pool.query(`
-    INSERT INTO posts (title, author, genre, accent_color, content, cover_image_id)
-    VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
-  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color || "#7B3F00", content, cover_image_id || null]);
+    INSERT INTO posts (title, author, genre, accent_color, content, cover_image_id, is_draft)
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
+  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color || "#7B3F00", content || "", cover_image_id || null, !!is_draft]);
 
   res.status(201).json(result.rows[0]);
 }));
 
 // PUT /posts/:id — обновить работу (admin)
 app.put("/posts/:id", requireAdmin, asyncHandler(async (req, res) => {
-  const { title, author, genre, accent_color, content, cover_image_id } = req.body;
+  const { title, author, genre, accent_color, content, cover_image_id, is_draft } = req.body;
+  if (!title?.trim() || !author?.trim()) {
+    return res.status(400).json({ error: "title, author обязательны" });
+  }
+  if (!is_draft && !content?.trim()) {
+    return res.status(400).json({ error: "Для публикации нужен текст произведения" });
+  }
   const result = await pool.query(`
     UPDATE posts
     SET title=$1, author=$2, genre=$3, accent_color=$4,
-        content=$5, cover_image_id=$6
-    WHERE id=$7 RETURNING *
-  `, [title?.trim(), author?.trim(), genre?.trim() || null, accent_color, content, cover_image_id || null, req.params.id]);
+        content=$5, cover_image_id=$6, is_draft=$7
+    WHERE id=$8 RETURNING *
+  `, [title.trim(), author.trim(), genre?.trim() || null, accent_color, content || "", cover_image_id || null, !!is_draft, req.params.id]);
 
   if (!result.rows.length) return res.status(404).json({ error: "Not found" });
   res.json(result.rows[0]);

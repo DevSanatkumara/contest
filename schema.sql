@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_draft BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS idx_likes_post     ON likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post  ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created  ON posts(created_at DESC);

@@ -124,9 +124,13 @@ export default function App() {
     window.history.pushState({ screen: "read", postId: p.id }, "");
   }
 
-  async function loadPosts() {
+  async function loadPosts(withDrafts = false) {
     setLoading(true); setError(null);
-    try { setPosts(await apiFetch("/posts")); }
+    try {
+      const url  = withDrafts ? "/posts?include_drafts=1" : "/posts";
+      const opts = withDrafts ? { headers: authHeaders() } : {};
+      setPosts(await apiFetch(url, opts));
+    }
     catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }
@@ -155,11 +159,11 @@ export default function App() {
       <Nav isAdmin={isAdmin}
         onGallery={() => setScreen("gallery")}
         onAdmin={() => setScreen(isAdmin ? "admin" : "login")}
-        onLogout={() => { setIsAdmin(false); setScreen("gallery"); }}
+        onLogout={() => { setIsAdmin(false); setScreen("gallery"); loadPosts(false); }}
       />
-      {screen === "gallery" && <Gallery posts={posts} fp={fingerprint} onRead={openPost} onPostsChange={setPosts} />}
+      {screen === "gallery" && <Gallery posts={posts.filter(p => !p.is_draft)} fp={fingerprint} onRead={openPost} onPostsChange={setPosts} />}
       {screen === "read" && postInView && <ReadView postId={postInView.id} fp={fingerprint} isAdmin={isAdmin} onBack={() => window.history.back()} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить работу?")) deletePost(id); }} />}
-      {screen === "login" && <LoginView onLogin={() => { setIsAdmin(true); setScreen("admin"); }} />}
+      {screen === "login" && <LoginView onLogin={() => { setIsAdmin(true); setScreen("admin"); loadPosts(true); }} />}
       {screen === "admin" && isAdmin && <AdminPanel posts={posts} onNew={() => { setEditingPost(null); setScreen("editor"); }} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить?")) deletePost(id); }} />}
       {screen === "editor" && isAdmin && <EditorView post={editingPost} onSave={async p => { await savePost(p); setScreen("admin"); }} onCancel={() => setScreen("admin")} />}
     </div>
@@ -386,7 +390,10 @@ function AdminPanel({ posts, onNew, onEdit, onDelete }) {
                   : <div style={{ width:"4px", height:"44px", borderRadius:"2px", background: p.accent_color || "#7B3F00", flexShrink:0 }} />
                 }
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"var(--font-serif)", fontSize:"16px", color:"var(--color-text-primary)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.title}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                    <div style={{ fontFamily:"var(--font-serif)", fontSize:"16px", color:"var(--color-text-primary)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 }}>{p.title}</div>
+                    {p.is_draft && <span style={{ flexShrink:0, fontFamily:"var(--font-sans)", fontSize:"10px", letterSpacing:".1em", textTransform:"uppercase", color:"var(--color-accent)", background:"var(--color-background-tertiary)", padding:"2px 8px", borderRadius:"4px" }}>Черновик</span>}
+                  </div>
                   <div style={{ fontFamily:"var(--font-sans)", fontSize:"12px", color:"var(--color-text-tertiary)", marginTop:"2px" }}>{p.author} · ♥ {p.like_count || 0} · 💬 {p.comment_count || 0}</div>
                 </div>
                 <div style={{ display:"flex", gap:".5rem", flexShrink:0 }}>
@@ -433,21 +440,28 @@ function EditorView({ post, onSave, onCancel }) {
 
   function removeCover() { setCoverId(null); setPreview(null); if (fileRef.current) fileRef.current.value = ""; }
 
-  async function handleSave() {
+  async function handleSave(asDraft) {
     if (!title.trim() || !author.trim()) return;
     setSaving(true);
     try {
-      await onSave({ id: post?.id, title: title.trim(), author: author.trim(), genre: genre.trim(), accent_color: accent, cover_image_id: coverId || null, content });
+      await onSave({ id: post?.id, title: title.trim(), author: author.trim(), genre: genre.trim(), accent_color: accent, cover_image_id: coverId || null, content, is_draft: asDraft });
+    } catch (e) {
+      alert(e.message);
     } finally { setSaving(false); }
   }
+
+  const isDraft = post?.is_draft;
+  const titleText = post ? (isDraft ? "Редактировать черновик" : "Редактировать работу") : "Новая работа";
+  const canSave = !saving && !uploading && !!title.trim() && !!author.trim();
 
   return (
     <div style={{ maxWidth:"820px", margin:"0 auto", padding:"2.5rem 2rem 6rem" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"2rem" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"24px", fontWeight:"400", margin:0, color:"var(--color-text-primary)" }}>{post ? "Редактировать работу" : "Новая работа"}</h1>
+        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"24px", fontWeight:"400", margin:0, color:"var(--color-text-primary)" }}>{titleText}</h1>
         <div style={{ display:"flex", gap:".75rem" }}>
           <button onClick={onCancel} style={{ background:"none" }}>Отмена</button>
-          <button onClick={handleSave} className="primary" disabled={saving || uploading || !title.trim() || !author.trim()}>{saving ? "Сохраняем…" : "Опубликовать"}</button>
+          <button onClick={() => handleSave(true)} disabled={!canSave}>{saving ? "Сохраняем…" : "Сохранить черновик"}</button>
+          <button onClick={() => handleSave(false)} className="primary" disabled={!canSave}>{saving ? "Сохраняем…" : "Опубликовать"}</button>
         </div>
       </div>
 
