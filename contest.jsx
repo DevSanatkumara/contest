@@ -108,6 +108,22 @@ export default function App() {
 
   useEffect(() => { loadPosts(); }, []);
 
+  useEffect(() => {
+    const onPop = () => {
+      setScreen("gallery");
+      setPostInView(null);
+      setEditingPost(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function openPost(p) {
+    setPostInView(p);
+    setScreen("read");
+    window.history.pushState({ screen: "read", postId: p.id }, "");
+  }
+
   async function loadPosts() {
     setLoading(true); setError(null);
     try { setPosts(await apiFetch("/posts")); }
@@ -141,8 +157,8 @@ export default function App() {
         onAdmin={() => setScreen(isAdmin ? "admin" : "login")}
         onLogout={() => { setIsAdmin(false); setScreen("gallery"); }}
       />
-      {screen === "gallery" && <Gallery posts={posts} fp={fingerprint} onRead={p => { setPostInView(p); setScreen("read"); }} onPostsChange={setPosts} />}
-      {screen === "read" && postInView && <ReadView postId={postInView.id} fp={fingerprint} isAdmin={isAdmin} onBack={() => setScreen("gallery")} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить работу?")) deletePost(id); }} />}
+      {screen === "gallery" && <Gallery posts={posts} fp={fingerprint} onRead={openPost} onPostsChange={setPosts} />}
+      {screen === "read" && postInView && <ReadView postId={postInView.id} fp={fingerprint} isAdmin={isAdmin} onBack={() => window.history.back()} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить работу?")) deletePost(id); }} />}
       {screen === "login" && <LoginView onLogin={() => { setIsAdmin(true); setScreen("admin"); }} />}
       {screen === "admin" && isAdmin && <AdminPanel posts={posts} onNew={() => { setEditingPost(null); setScreen("editor"); }} onEdit={p => { setEditingPost(p); setScreen("editor"); }} onDelete={id => { if (confirm("Удалить?")) deletePost(id); }} />}
       {screen === "editor" && isAdmin && <EditorView post={editingPost} onSave={async p => { await savePost(p); setScreen("admin"); }} onCancel={() => setScreen("admin")} />}
