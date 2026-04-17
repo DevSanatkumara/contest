@@ -24,9 +24,30 @@ function fmtDate(iso) {
   catch { return ""; }
 }
 
+function normalizeHtml(html) {
+  if (!html || typeof document === "undefined") return html || "";
+  const c = document.createElement("div");
+  c.innerHTML = html;
+  c.querySelectorAll("p,li,blockquote,h1,h2,h3,h4,h5,h6").forEach(block => {
+    while (block.firstChild && block.firstChild.nodeName === "BR") block.removeChild(block.firstChild);
+    while (block.lastChild && (
+      block.lastChild.nodeName === "BR" ||
+      (block.lastChild.nodeType === 3 && /^[\s\u00a0]*$/.test(block.lastChild.nodeValue))
+    )) block.removeChild(block.lastChild);
+    Array.from(block.querySelectorAll("br")).forEach(br => {
+      if (!br.parentNode) return;
+      const prev = br.previousSibling, next = br.nextSibling;
+      const prevBr = prev && prev.nodeName === "BR";
+      const nextBr = next && next.nodeName === "BR";
+      if (!prevBr && !nextBr) br.replaceWith(document.createTextNode(" "));
+    });
+  });
+  return c.innerHTML;
+}
+
 function stripHtml(html = "", len = 200) {
   const d = document.createElement("div");
-  d.innerHTML = html;
+  d.innerHTML = normalizeHtml(html);
   d.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
   d.querySelectorAll("p,div,li,blockquote,h1,h2,h3,h4,h5,h6,tr").forEach(el => el.append("\n"));
   const t = (d.textContent || d.innerText || "")
@@ -143,10 +164,11 @@ export default function App() {
 
   async function savePost(post) {
     const isNew = !post.id;
+    const cleaned = { ...post, content: normalizeHtml(post.content) };
     const saved = await apiFetch(isNew ? "/posts" : `/posts/${post.id}`, {
       method: isNew ? "POST" : "PUT",
       headers: authHeaders(),
-      body: JSON.stringify(post)
+      body: JSON.stringify(cleaned)
     });
     setPosts(ps => isNew ? [saved, ...ps] : ps.map(p => p.id === saved.id ? { ...p, ...saved } : p));
   }
@@ -323,7 +345,7 @@ function ReadView({ postId, fp, isAdmin, onBack, onEdit, onDelete }) {
 
       <div className="orn-divider">✦</div>
 
-      <div className="pc" style={{ fontFamily:"var(--font-serif)", fontSize:"18px", lineHeight:"1.9", color:"var(--color-text-primary)" }} dangerouslySetInnerHTML={{ __html: post.content }} />
+      <div className="pc" style={{ fontFamily:"var(--font-serif)", fontSize:"18px", lineHeight:"1.9", color:"var(--color-text-primary)" }} dangerouslySetInnerHTML={{ __html: normalizeHtml(post.content) }} />
 
       <div style={{ marginTop:"3.5rem", paddingTop:"2rem", borderTop:"1px solid var(--color-border-tertiary)", display:"flex", alignItems:"center", gap:"1rem" }}>
         <button onClick={toggleLike} style={{ background:"none", border:`0.5px solid ${liked ? "var(--color-border-danger)" : "var(--color-border-secondary)"}`, borderRadius:"100px", padding:"8px 20px", color: liked ? "var(--color-text-danger)" : "var(--color-text-secondary)", fontFamily:"var(--font-sans)", fontSize:"14px", display:"flex", alignItems:"center", gap:"8px" }}>
@@ -417,7 +439,7 @@ function EditorView({ post, onSave, onCancel }) {
   const [coverPreview, setPreview] = useState(post?.cover_image_id ? `${API}/files/${post.cover_image_id}` : null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving]       = useState(false);
-  const [content, setContent]     = useState(post?.content || "");
+  const [content, setContent]     = useState(normalizeHtml(post?.content || ""));
   const fileRef   = useRef(null);
 
   async function handleFile(e) {
