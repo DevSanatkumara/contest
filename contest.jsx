@@ -34,13 +34,8 @@ function normalizeHtml(html) {
       block.lastChild.nodeName === "BR" ||
       (block.lastChild.nodeType === 3 && /^[\s\u00a0]*$/.test(block.lastChild.nodeValue))
     )) block.removeChild(block.lastChild);
-    Array.from(block.querySelectorAll("br")).forEach(br => {
-      if (!br.parentNode) return;
-      const prev = br.previousSibling, next = br.nextSibling;
-      const prevBr = prev && prev.nodeName === "BR";
-      const nextBr = next && next.nodeName === "BR";
-      if (!prevBr && !nextBr) br.replaceWith(document.createTextNode(" "));
-    });
+    if (block.lastChild && block.lastChild.nodeType === 3)
+      block.lastChild.textContent = block.lastChild.textContent.replace(/[\s ]+$/, "");
   });
   return c.innerHTML;
 }
@@ -102,7 +97,7 @@ export default function App() {
       .pc h1{font-size:28px;margin:2rem 0 1rem}
       .pc h2{font-size:22px;margin:1.75rem 0 .75rem}
       .pc h3{font-size:18px;margin:1.5rem 0 .5rem}
-      .pc p{margin:0 0 1.4rem}
+      .pc p{margin:0}.pc p:empty{height:.9em}
       .pc hr{border:none;border-top:.5px solid var(--color-border-tertiary);margin:2.5rem 0}
       .pc blockquote{border-left:2px solid var(--color-border-secondary);padding-left:1.25rem;margin:1.5rem 0;color:var(--color-text-secondary);font-style:italic}
       .ch{transition:border-color .2s,box-shadow .2s,transform .2s}
